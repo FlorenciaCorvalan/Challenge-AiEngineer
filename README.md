@@ -5,7 +5,7 @@ Generar entorno local: ```python -m venv env```
 Activar el entorno:
 En Windows:
 
-```myenv\Scripts\activate.bat```
+```env\Scripts\activate.bat```
 
 En macOS/Linux:
 
