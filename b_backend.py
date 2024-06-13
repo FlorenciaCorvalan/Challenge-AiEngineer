@@ -65,7 +65,6 @@ def consulta(message):
     docs=leer_docx_y_dividir_chunks(archivo_docx)
     docs = list(filter(lambda x: x != '', docs))
     
-    print(len(docs))
     ids = [str(uuid.uuid1()) for _ in range(len(docs))]
     collection.add(
         documents=docs,
