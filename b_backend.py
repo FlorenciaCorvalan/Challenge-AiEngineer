@@ -8,7 +8,6 @@ import a_env_vars
 import openai
 from docx import Document
 import uuid
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from openai import OpenAI
 
 
@@ -53,53 +52,47 @@ metadata_options = {
     "hnsw:space": "ip"  # You can change this to "ip" or "cosine" if needed
 }
 
-#collection = client.get_or_create_collection(
- #   name="stories", embedding_function=embedding_function)
+
 
 print(client.list_collections())
-document = Document(archivo_docx)
-collection = client.get_or_create_collection("cuentos-doc",embedding_function=openai_ef)
 
-archivo_docx = "documento.docx"  # Reemplaza con tu archivo DOCX
 
-docs=leer_docx_y_dividir_chunks(archivo_docx)
+def consulta(message):
 
-docs = list(filter(lambda x: x != '', docs))
+    print(client.list_collections())
 
-print(len(docs))
-ids = [str(uuid.uuid1()) for _ in range(len(docs))]
-collection.add(
-    documents=docs,
-    ids=ids
+    collection = client.get_or_create_collection("cuentos-doc",embedding_function=openai_ef)
+    docs=leer_docx_y_dividir_chunks(archivo_docx)
+    docs = list(filter(lambda x: x != '', docs))
+    
+    print(len(docs))
+    ids = [str(uuid.uuid1()) for _ in range(len(docs))]
+    collection.add(
+        documents=docs,
+        ids=ids
     )
 
+    vector = text_embedding(message)
 
+    results = collection.query(    
+        query_embeddings=vector,
+        n_results=1,
+        include=["documents"]
+    )
 
-print(client.list_collections())
-
-question = 'de que trata cuento corto?'
-
-vector=text_embedding(question)
-print(vector)
-results=collection.query(    
-    query_embeddings=vector,
-    n_results=15,
-    include=["documents"]
-)
-
-	
-res = "\n".join(str(item) for item in results['documents'][0])
-
-prompt=f'```{res}```En base a los datos pasados en  ```, quien es Zara?'
-
-messages = [
-        {"role": "system", "content": "Respondes lo que se te pregunta en una sola oración"},
-        {"role": "user", "content": prompt}
-]
-response = client4.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=messages,
-    temperature=0
-)
-response_message = response.choices[0].message.content.strip()
-print(response_message)
+    relevant_chunk = results['documents'][0]
+    prompt = f'```{relevant_chunk}, pregunta del usuario: '+ message
+    messages = [
+        {"role": "system", "content": """Eres un experto en respoder preguntas del usuario sobre los datos que te envia, responde la pregunta del usuario con las siguientes restricciones: siempre responde exactamente lo mismo a la misma pregunta del usuario, responde en una sola oración, usa el mismo idioma en el que se encuentra redactada la pregunta del usuario (si la pregunta está en ingles responde en ingles), agrega emojis que resumen el contenido , y siempre responde en tercera persona"""},
+        {"role": "user", "content": prompt},
+        {'role': 'assistant', 'content': ""}
+    ]
+    
+    response = client4.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=messages,
+        temperature=0
+        )
+    response_message = response.choices[0].message.content.strip()
+    print(response_message)
+    return response_message
